@@ -8,7 +8,7 @@ from matplotlib import pyplot as plt
 from mpl_toolkits import mplot3d
 from stl import mesh
 
-FILE_NAME = 'cube.stl'
+FILE_NAME = 'death star.stl'
 
 original_mesh: mesh.Mesh = mesh.Mesh.from_file(FILE_NAME)
 
@@ -83,10 +83,6 @@ x_rotation_mesh, y_rotation_mesh = np.meshgrid(x_rotation, y_rotation, indexing=
 
 
 f_of_x = np.array([[f([x, y, 0]) for x, y in zip(x_row, y_row)] for x_row, y_row in zip(x_rotation_mesh, y_rotation_mesh)])
-for x, y, fx in zip(x_rotation_mesh.flatten(), y_rotation_mesh.flatten(), f_of_x.flatten()):
-    assert f([x,y,0]) == fx
-print(x_rotation_mesh.shape)
-
 
 
 
