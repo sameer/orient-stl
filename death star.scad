@@ -1,4 +1,3 @@
-$fn = 100;
 rotate([180,0,0])
 difference() {
     sphere(r=10);
