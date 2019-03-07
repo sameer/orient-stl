@@ -3,12 +3,13 @@ import math
 import time
 
 from scipy import optimize
+from scipy.special import expit
 import numpy as np
 from matplotlib import pyplot as plt
 from mpl_toolkits import mplot3d
 from stl import mesh
 
-FILE_NAME = 'stardestroyer-engines.stl'
+FILE_NAME = 'death star.stl'
 
 original_mesh: mesh.Mesh = mesh.Mesh.from_file(FILE_NAME)
 
@@ -29,18 +30,15 @@ def f(t):
         vectors[:, i] = vectors[:, i] @ rotation_matrix
     a = vectors[:, 1] - vectors[:, 0]
     b = vectors[:, 2] - vectors[:, 0]
-    normals = a[:, 0]*b[:, 1] - a[:, 1]*b[:, 0]
+    normal_z_components = a[:, 0]*b[:, 1] - a[:, 1]*b[:, 0]
 
     # z-height of the lowest vertex
-    lowest_vertex_z = np.amin(vectors[:, :, 2])
+    z_min = np.amin(vectors[:, :, 2])
 
     # faces of all the triangles in 2D
     faces_2d = vectors[:, :, :2]
-    # find overhangs that aren't bottom-surfaces
-    overhang_face_indices = np.extract((normals < 0) * (np.logical_not(np.isclose(
-        vectors[:, :, 2], lowest_vertex_z))).any(axis=1), np.arange(0, len(faces_2d)))
+
     # prune faces to overhangs
-    faces_2d = np.take(faces_2d, overhang_face_indices, axis=0)
     # sides as vectors
     sides = np.array([faces_2d[:, i] - faces_2d[:, i+1] for i in range(-1, 2)])
     # vector magnitude
@@ -57,9 +55,47 @@ def f(t):
     # so that the objective function may be pseudo-convex (right terminology?).
     heron_sign = np.sign(heron)
 
+    # Add a bias to emphasize overhang surfaces.
+    # 
+    # The function computes the total area of the 2D projections of the part. To minimize overhang area,
+    # there are several possible treatments:
+    # 1. Set overhang area to be positive and top surface area to be negative. However, for some 
+    #    symmetric cases like a cube, this will always be 0.
+    # 2. Set overhang area to be positive and top surface area to be 0. This is ideal using the unit step function
+    #    but results in discontinuous derivatives.
+    # 
+    # I use a variation on #2: a unit-step approximation. This perturbs the function appropriately and
+    # keeps all partial derivatives continuous.
+    # As a precautionary measure, I multiply the z-component of the normals by 100 to sharpen the decision boundary.
+    overhang_bias = np.tanh(-100*normal_z_components)/2 + .5
+
+
+    # Add a bias to prefer bottom surfaces.
+    # 
+    # A triangle with all three points at the lowest vertex height is perpendicular to the build plate. Since it 
+    # is also the lowest face of the part, it lies flat on the build plate and is not an overhang. The function
+    # should take this into account.
+    #
+    # 1. Add an if statement to set the area to 0 if a triangle's vertices are all at the minimum z-height. Again,
+    #    like with the overhang bias, this results in discontinuous derivatives. For a non-derivative method, the 
+    #    function would have no gradient to suggest that it is better to orient a part with big, flat surfaces on 
+    #    the bottom.
+    #
+    # I use a variation on #1: the hyperbolic tangent of the sum of the z-coordinates' distance from z-min.
+    # As all three coordinates approach 0, the value approaches 0. 
+    # As a precautionary measure, I multiply the sum by 100 to sharpen the decision boundary.
+    bottom_face_bias = np.tanh((np.sum(vectors[:, :, 2] ,axis=1) - 3*z_min)*100)
+
     np.abs(heron, out=heron)
     np.sqrt(heron, out=heron)
-    heron *= .25 * heron_sign
+    # print(vectors[0:1, :, 2])
+    # print(heron)
+    # print(overhang_bias)
+    # print(bottom_face_bias)
+    heron *= overhang_bias
+    heron *= bottom_face_bias
+    heron /= 4
+    heron *= heron_sign
 
     # sum with pairwise summation, which should keep precision error low
     value = np.sum(heron)
@@ -115,31 +151,56 @@ def dfdt(t) -> List[float]:
         acc = -np.divide(sign * ypart2 * ypart3, divisor, where=(divisor != 0))
         return np.sum(acc)
 
-    dt = [x(), y(), 0]
+    dt = np.array([x(), y(), 0])
 
     finish = time.time()
     print(f'Computed dfdt({t})={dt} in {round((finish-start)*1000)}ms')
     return dt
 
 
-dfdt([math.pi/100, 0])
-f([math.pi/4, 0])
-
-
 def dfdty(t) -> float:
     pass
 
 
-# res = optimize.dual_annealing(
-#    f, bounds=[[-math.pi, math.pi], [-math.pi, math.pi]], x0=[0, 0])
-# res = optimize.minimize(f, method='L-BFGS-B', bounds=[(
-# 0, math.pi*2), (0, math.pi*2), (0, 0)], x0=np.array([0, 0, 0]), options={'xatol': 1E-10})
-#print(f'f({np.round(res.x, decimals=2)})={f(res.x)}')
-#print(f'f({[math.radians(150),0]})={f([math.radians(-150), 0])}')
+res = optimize.dual_annealing(
+  f, bounds=[[-math.pi, math.pi], [-math.pi, math.pi]])
+# res = optimize.minimize(fun=f, jac=None, method='BFGS', bounds=[(0, math.pi*2), (0, math.pi*2), (0, 0)], x0=np.array([0, 0, 0]), options={'xatol': 1E-10})
+print(f'f({np.round(res.x, decimals=2)})={f(res.x)}')
 
-original_mesh.rotate([1, 0, 0], math.radians(-150))
-original_mesh.rotate([0, 1, 0], 0)
-# original_mesh.rotate([0, 0, 1], res.x[2])
+def plot_f():
+    resolution = [20,20]
+
+    x_rotation = np.linspace(-math.pi, math.pi, resolution[0])
+    y_rotation = np.linspace(-math.pi, math.pi, resolution[1])
+    x_rotation_mesh, y_rotation_mesh = np.meshgrid(
+        x_rotation, y_rotation, indexing='ij')
+
+
+    f_of_t = np.array([[f([x, y, 0]) for x, y in zip(x_row, y_row)] for x_row, y_row in zip(x_rotation_mesh, y_rotation_mesh)])
+    s = ax.plot_surface(x_rotation_mesh, y_rotation_mesh, f_of_t)
+
+    # dfdtx_of_t = np.array([[dfdt([x, y, 0])[0] for x, y in zip(x_row, y_row)] for x_row, y_row in zip(x_rotation_mesh, y_rotation_mesh)])
+    # s = ax.plot_surface(x_rotation_mesh, y_rotation_mesh, dfdtx_of_t)
+    # dfdty_of_t = np.array([[dfdt([x, y, 0])[1] for x, y in zip(x_row, y_row)] for x_row, y_row in zip(x_rotation_mesh, y_rotation_mesh)])
+    # s = ax.plot_surface(x_rotation_mesh, y_rotation_mesh, dfdty_of_t)
+
+    #ax.scatter(res.x[0], res.x[1], f(res.x), c='red')
+    #ax.scatter(math.pi/2, 0, f([math.pi,0]), c='green')
+    plt.show()
+
+def plot_stl(x):
+    original_mesh.rotate([1, 0, 0], x[0])
+    original_mesh.rotate([0, 1, 0], x[1])
+    if len(x) > 2:
+        original_mesh.rotate([0, 0, 1], x[2])
+    stl_polygons = mplot3d.art3d.Poly3DCollection(original_mesh.vectors)
+    stl_polygons.set_facecolor('gold')
+    stl_polygons.set_edgecolor('black')
+    ax.add_collection3d(stl_polygons)
+    scale = original_mesh.points.ravel()
+    ax.auto_scale_xyz(scale, scale, scale)
+    plt.show()
+
 fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
 ax.set_title(f'Effect of Rotating {FILE_NAME} on Function Value')
@@ -147,27 +208,9 @@ ax.set_xlabel('X-rotation')
 ax.set_ylabel('Y-rotation')
 ax.set_zlabel('Function value')
 
-resolution = [1, 1]
-
-x_rotation = np.linspace(-math.pi, math.pi, resolution[0])
-y_rotation = np.linspace(-math.pi, math.pi, resolution[1])
-x_rotation_mesh, y_rotation_mesh = np.meshgrid(
-    x_rotation, y_rotation, indexing='ij')
-
-
-f_of_x = np.array([[f([x, y, 0]) for x, y in zip(x_row, y_row)]
-                   for x_row, y_row in zip(x_rotation_mesh, y_rotation_mesh)])
-
-
-s = ax.plot_surface(x_rotation_mesh, y_rotation_mesh, f_of_x)
-
-# ax.scatter(res.x[0], res.x[1], f(res.x), c='red')
-
-# stl_polygons = mplot3d.art3d.Poly3DCollection(original_mesh.vectors)
-# stl_polygons.set_facecolor('gold')
-# stl_polygons.set_edgecolor('black')
-# ax.add_collection3d(stl_polygons)
-# scale = original_mesh.points.ravel()
-# ax.auto_scale_xyz(scale, scale, scale)
+#plot_f()
+plot_stl([math.pi,0])
 # plt.colorbar(s)
-# plt.show()
+#f([0,0,0])
+#f([math.pi/2,0,0])
+#f([math.pi,0,0])
