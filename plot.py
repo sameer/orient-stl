@@ -1,0 +1,54 @@
+import math
+from typing import List, Tuple
+
+import numpy as np
+from matplotlib import pyplot as plt
+from mpl_toolkits import mplot3d
+import stl
+
+from objective_function import f
+
+def plot_f(resolution: Tuple[float,float], mesh: stl.mesh.Mesh):
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    ax.set_title(f'Effect of Rotating Part on Function Value')
+    ax.set_xlabel('X-rotation')
+    ax.set_ylabel('Y-rotation')
+    ax.set_zlabel('Function value')
+
+    x_rotation = np.linspace(-math.pi, math.pi, resolution[0])
+    y_rotation = np.linspace(-math.pi, math.pi, resolution[1])
+    x_rotation_mesh, y_rotation_mesh = np.meshgrid(x_rotation, y_rotation, indexing='ij')
+
+
+    f_of_t = np.array([[f([x, y, 0], mesh) for x, y in zip(x_row, y_row)] for x_row, y_row in zip(x_rotation_mesh, y_rotation_mesh)])
+    
+    print(f'Minimum value of {np.amin(f_of_t)} found')
+    s = ax.plot_surface(x_rotation_mesh, y_rotation_mesh, f_of_t)
+
+    # dfdtx_of_t = np.array([[dfdt([x, y, 0])[0] for x, y in zip(x_row, y_row)] for x_row, y_row in zip(x_rotation_mesh, y_rotation_mesh)])
+    # s = ax.plot_surface(x_rotation_mesh, y_rotation_mesh, dfdtx_of_t)
+    # dfdty_of_t = np.array([[dfdt([x, y, 0])[1] for x, y in zip(x_row, y_row)] for x_row, y_row in zip(x_rotation_mesh, y_rotation_mesh)])
+    # s = ax.plot_surface(x_rotation_mesh, y_rotation_mesh, dfdty_of_t)
+
+    #ax.scatter(res.x[0], res.x[1], f(res.x), c='red')
+    #ax.scatter(math.pi/2, 0, f([math.pi,0]), c='green')
+    plt.show()
+
+def plot_stl(x: List[float], mesh: stl.mesh.Mesh):
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    ax.set_title(f'Optimal Orientation of Part')
+
+    mesh = stl.mesh.Mesh(mesh.data.copy())
+    mesh.rotate([1, 0, 0], x[0])
+    mesh.rotate([0, 1, 0], x[1])
+    if len(x) > 2:
+        mesh.rotate([0, 0, 1], x[2])
+    stl_polygons = mplot3d.art3d.Poly3DCollection(mesh.vectors)
+    stl_polygons.set_facecolor('gold')
+    stl_polygons.set_edgecolor('black')
+    ax.add_collection3d(stl_polygons)
+    scale = mesh.points.ravel()
+    ax.auto_scale_xyz(scale, scale, scale)
+    plt.show()
