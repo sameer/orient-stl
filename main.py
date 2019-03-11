@@ -11,20 +11,22 @@ import stl
 
 from objective_function import f
 from plot import plot_f, plot_stl
+from direct import direct
 
 
-def orient_stl(mesh: stl.mesh.Mesh) -> List[float]:
-    res = optimize.dual_annealing(f, args=[mesh], bounds=[[-math.pi, math.pi], [-math.pi, math.pi]])
+def orient_stl(mesh: stl.mesh.Mesh, debug = False) -> List[float]:
+    res = optimize.minimize(f, [0, 0], args=(mesh, debug), method=direct, bounds=np.array([[-math.pi, math.pi], [-math.pi, math.pi]]), options=dict(maxfev=10000))
+    # res = optimize.dual_annealing(f, args=[mesh, debug], bounds=[[-math.pi, math.pi], [-math.pi, math.pi]])
     # res = optimize.shgo(f, bounds=[[-math.pi, math.pi], [-math.pi, math.pi]])
-    # res = optimize.differential_evolution(f, bounds=[[-math.pi, math.pi], [-math.pi, math.pi]],workers=-1)
+    # res = optimize.differential_evolution(f, args=[mesh,debug], bounds=[[-math.pi, math.pi], [-math.pi, math.pi]],workers=-1)
     # res = optimize.minimize(fun=f, jac=None, method='BFGS', bounds=[(0, math.pi*2), (0, math.pi*2), (0, 0)], x0=np.array([0, 0, 0]), options={'xatol': 1E-10})
-    print(f'f({np.round(res.x, decimals=2)})={f(res.x, mesh)}')
-    return res.x
+    return (res.x, res.fun)
 
 
 if __name__ == '__main__':
+    debug = False
     if len(sys.argv) != 3:
-        print('Usage: python main.py STL_FILENAME (orient|plot)')
+        print('Usage: python main.py STL_FILENAME (orient|plot|orientplot)')
     else:
         filename = sys.argv[1]
         command = sys.argv[2]
@@ -33,6 +35,10 @@ if __name__ == '__main__':
             print(f'Plotting function value for {filename}')
             plot_f((100,100), mesh)
         elif command == 'orient':
-            theta = orient_stl(mesh)
-            print(f'File "{filename}" oriented with angles {theta}')
+            theta, value = orient_stl(mesh, debug)
+            print(f'File "{filename}" oriented with angles {np.round(theta, decimals=2)} and value {value}')
+        elif command == 'orientplot':
+            theta, value = orient_stl(mesh, debug)
+            print(f'File "{filename}" oriented with angles {np.round(theta, decimals=2)} and value {value}') 
+            plot_stl(theta, mesh)           
 

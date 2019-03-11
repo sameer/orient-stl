@@ -5,8 +5,9 @@ import time
 import numpy as np
 import stl
 
-def f(theta: List[float], mesh: stl.mesh.Mesh) -> float:
-    start = time.time()
+def f(theta: List[float], mesh: stl.mesh.Mesh, debug=False) -> float:
+    if debug:
+        start = time.time()
     # need to copy, rotations in-place lose significant precision
     vectors = mesh.vectors.copy()
 
@@ -14,13 +15,14 @@ def f(theta: List[float], mesh: stl.mesh.Mesh) -> float:
     roll = mesh.rotation_matrix([1, 0, 0], theta[0])
     pitch = mesh.rotation_matrix([0, 1, 0], theta[1])
     yaw = mesh.rotation_matrix([0, 0, 1], 0)
-
     rotation_matrix = roll @ pitch @ yaw
-    # vectors = vectors * rotation_matrix
+
     for i in range(3):
         vectors[:, i] = vectors[:, i] @ rotation_matrix
     a = vectors[:, 1] - vectors[:, 0]
     b = vectors[:, 2] - vectors[:, 0]
+
+    # compute the z-component of mesh normals
     normal_z_components = a[:, 0]*b[:, 1] - a[:, 1]*b[:, 0]
 
     # z-height of the lowest vertex
@@ -29,7 +31,6 @@ def f(theta: List[float], mesh: stl.mesh.Mesh) -> float:
     # faces of all the triangles in 2D
     faces_2d = vectors[:, :, :2]
 
-    # prune faces to overhangs
     # sides as vectors
     sides = np.array([faces_2d[:, i] - faces_2d[:, i+1] for i in range(-1, 2)])
     # vector magnitude
@@ -39,12 +40,18 @@ def f(theta: List[float], mesh: stl.mesh.Mesh) -> float:
     side_lengths.sort(axis=0)
     c, b, a = side_lengths[0], side_lengths[1], side_lengths[2]
     heron = (a + (b+c))*(c - (a-b)) * (c + (a-b))*(a + (b-c))
+
     # Rotations produce some triangles that aren't triangles (sum of smaller 2 side lengths < largest side length)
     # which, when used in Heron's formula, result in sqrt(negative number).
     #
-    # Though they should be treated as having zero-area, I treat them as sqrt(abs(number)) * sign(number)
-    # so that the objective function may be pseudo-convex (right terminology?).
+    # Though they should be treated as having zero-area, I treat them as sqrt(abs(number)) * sign(number),
+    # as the amount of error varies from part to part and I have been unable to use rounding to remove the error.
     heron_sign = np.sign(heron)
+
+    np.abs(heron, out=heron)
+    np.sqrt(heron, out=heron)
+    heron /= 4
+    heron *= heron_sign
 
     # Add a bias to emphasize overhang surfaces.
     # 
@@ -57,8 +64,8 @@ def f(theta: List[float], mesh: stl.mesh.Mesh) -> float:
     # 
     # I use a variation on #2: a unit-step approximation. This perturbs the function appropriately and
     # keeps all partial derivatives continuous.
-    # As a precautionary measure, I multiply the z-component of the normals by 100 to sharpen the decision boundary.
     overhang_bias = np.tanh(-normal_z_components)/2 + .5
+    heron *= overhang_bias
 
 
     # Add a bias to prefer bottom surfaces.
@@ -74,25 +81,16 @@ def f(theta: List[float], mesh: stl.mesh.Mesh) -> float:
     #
     # I use a variation on #1: the hyperbolic tangent of the sum of the z-coordinates' distance from z-min.
     # As all three coordinates approach 0, the value approaches 0. 
-    # As a precautionary measure, I multiply the sum by 100 to sharpen the decision boundary.
-    bottom_face_bias = np.tanh((np.sum(vectors[:, :, 2]-z_min ,axis=1)))
-
-    np.abs(heron, out=heron)
-    np.sqrt(heron, out=heron)
-    # print(vectors[0:1, :, 2])
-    # print(heron)
-    # print(overhang_bias)
-    # print(bottom_face_bias)
-    heron *= overhang_bias
+    # As a precautionary measure, I multiply the sum by a constant to sharpen the decision boundary.
+    bottom_face_bias = np.tanh(100*(np.sum(vectors[:, :, 2]-z_min ,axis=1)))
     heron *= bottom_face_bias
-    heron /= 4
-    heron *= heron_sign
 
-    # sum with pairwise summation, which should keep precision error low
+    # sum areas with pairwise summation, which should keep precision error low
     value = np.sum(heron)
 
-    finish = time.time()
-    print(f'Computed f({theta})={value} in {round((finish-start)*1000)} ms')
+    if debug:
+        finish = time.time()
+        print(f'Computed f({theta})={value} in {round((finish-start)*1000)} ms')
     return value
 
 # All products of triangle components (v1x*v1y, v1x*v1z, ..., v1x*v3z, etc.)

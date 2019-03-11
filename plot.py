@@ -35,16 +35,16 @@ def plot_f(resolution: Tuple[float,float], mesh: stl.mesh.Mesh):
     #ax.scatter(math.pi/2, 0, f([math.pi,0]), c='green')
     plt.show()
 
-def plot_stl(x: List[float], mesh: stl.mesh.Mesh):
+def plot_stl(theta: List[float], mesh: stl.mesh.Mesh):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     ax.set_title(f'Optimal Orientation of Part')
 
     mesh = stl.mesh.Mesh(mesh.data.copy())
-    mesh.rotate([1, 0, 0], x[0])
-    mesh.rotate([0, 1, 0], x[1])
-    if len(x) > 2:
-        mesh.rotate([0, 0, 1], x[2])
+    mesh.rotate([1, 0, 0], theta[0])
+    mesh.rotate([0, 1, 0], theta[1])
+    if len(theta) > 2:
+        mesh.rotate([0, 0, 1], theta[2])
     stl_polygons = mplot3d.art3d.Poly3DCollection(mesh.vectors)
     stl_polygons.set_facecolor('gold')
     stl_polygons.set_edgecolor('black')
