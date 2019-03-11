@@ -15,7 +15,7 @@ from direct import direct
 
 
 def orient_stl(mesh: stl.mesh.Mesh, debug = False) -> List[float]:
-    res = optimize.minimize(f, [0, 0], args=(mesh, debug), method=direct, bounds=np.array([[-math.pi, math.pi], [-math.pi, math.pi]]), options=dict(maxfev=10000))
+    res = optimize.minimize(f, [0, 0], args=(mesh, debug), method=direct, bounds=np.array([[-math.pi, math.pi], [-math.pi, math.pi]]), options=dict(maxfev=1000))
     # res = optimize.dual_annealing(f, args=[mesh, debug], bounds=[[-math.pi, math.pi], [-math.pi, math.pi]])
     # res = optimize.shgo(f, bounds=[[-math.pi, math.pi], [-math.pi, math.pi]])
     # res = optimize.differential_evolution(f, args=[mesh,debug], bounds=[[-math.pi, math.pi], [-math.pi, math.pi]],workers=-1)
@@ -40,5 +40,5 @@ if __name__ == '__main__':
         elif command == 'orientplot':
             theta, value = orient_stl(mesh, debug)
             print(f'File "{filename}" oriented with angles {np.round(theta, decimals=2)} and value {value}') 
-            plot_stl(theta, mesh)           
+            plot_stl(theta, mesh)
 

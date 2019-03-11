@@ -9,7 +9,7 @@ from matplotlib.collections import PatchCollection
 from matplotlib.patches import Rectangle
 
 def is_cube(bounds_range):
-    return (bounds_range == bounds_range[0]).all()
+    return np.allclose(bounds_range, bounds_range[0])
 
 def denormalize_point(bounds, hyper):
     bounds_range = bounds[:, 1] - bounds[:, 0]
@@ -22,27 +22,27 @@ def remove_potentially_optimal(rectangles, fmin: float, epsilon: float):
     fmin_by_size = [min(rectangle[2] for rectangle in rectangles[size]) for size in sorted_sizes]
     potentially_optimal = {}
 
-    for j, (size, fmin_for_size) in enumerate(zip(sorted_sizes, fmin_by_size)):
+    for i, (size, fmin_for_size) in enumerate(zip(sorted_sizes, fmin_by_size)):
         rectangles_same_size = rectangles[size]
-
         finalists = []
+
         # 3.3 (6)
         candidates = filter(lambda j: rectangles_same_size[j][2] == fmin_for_size, range(len(rectangles_same_size)))
 
         for j in candidates:
-            candidate = rectangles_same_size[j]
+            fcandidate = rectangles_same_size[j][2]
 
-            if j < len(fmin_by_size) - 1:
+            if i < len(fmin_by_size) - 1:
                 # 3.3 (8) or (9)
-                minimum_larger_diff = min((fmin_for_larger_size - candidate[2]) / (larger_size -  size) for larger_size, fmin_for_larger_size in zip(sorted_sizes[j+1:], fmin_by_size[j+1:]))
-                if not fmin_is_zero and epsilon > (fmin - candidate[2]) / abs(fmin) + size/abs(fmin) * minimum_larger_diff:
+                minimum_larger_diff = min((fmin_for_larger_size - fcandidate) / (larger_size -  size) for larger_size, fmin_for_larger_size in zip(sorted_sizes[i+1:], fmin_by_size[i+1:]))
+                if not fmin_is_zero and epsilon > (fmin - fcandidate) / abs(fmin) + size/abs(fmin) * minimum_larger_diff:
                     continue
-                elif fmin_is_zero and candidate[2] > size * minimum_larger_diff:
+                elif fmin_is_zero and fcandidate > size * minimum_larger_diff:
                     continue
                 # 3.3 (7)
-                if j > 0:
-                    maximum_smaller_diff = max((candidate[2] - fmin_for_smaller_size) / (size - smaller_size) for smaller_size, fmin_for_smaller_size in zip(sorted_sizes[:j], fmin_by_size[:j]))
-                    if minimum_larger_diff <= 0 or np.allclose(minimum_larger_diff, maximum_smaller_diff) or minimum_larger_diff > maximum_smaller_diff:
+                if i > 0:
+                    maximum_smaller_diff = max((fcandidate - fmin_for_smaller_size) / (size - smaller_size) for smaller_size, fmin_for_smaller_size in zip(sorted_sizes[:i], fmin_by_size[:i]))
+                    if minimum_larger_diff <= 0 or np.allclose(minimum_larger_diff, maximum_smaller_diff) or minimum_larger_diff < maximum_smaller_diff:
                         continue
             finalists.append(j)
         
@@ -179,8 +179,8 @@ def direct(fun: Callable[[List[float]], float], x0, bounds: List[List[float]], a
             break
         potentially_optimal = remove_potentially_optimal(rectangles, fmin, epsilon)
         print(f'Iteration {it} f({xmin})={fmin} with fev={fev}')
-        print(f'Potentially optimal: {potentially_optimal}')
         if len(potentially_optimal) == 0:
+            print('No potentially optimal rectangles, stopping')
             break
         for rectangle_list in potentially_optimal.values():
             for rectangle in rectangle_list:
@@ -197,5 +197,5 @@ def direct(fun: Callable[[List[float]], float], x0, bounds: List[List[float]], a
 # print(denormalize_point(np.array([[-10, 10], [-10, 10]]), np.array([0.5, 0.5])))
 # assert (denormalize_point(np.array([[-10, 10], [-10, 10]]), np.array([0.5, 0.5])) == np.array([0,0])).all()
 
-print(minimize(lambda x: np.sum(x**2), [0, 0],
-               method=direct, bounds=np.array([[-10, 10], [-10, 10]]), options=dict(maxit=5)))
+# print(minimize(lambda x: (x[0]+3)**2 + (x[1])**2, [0, 0],
+#                method=direct, bounds=np.array([[-10, 10], [-10, 10]]), options=dict(maxit=30)))

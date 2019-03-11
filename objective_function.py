@@ -55,7 +55,7 @@ def f(theta: List[float], mesh: stl.mesh.Mesh, debug=False) -> float:
 
     # Add a bias to emphasize overhang surfaces.
     # 
-    # The function computes the total area of the 2D projections of the part. To minimize overhang area,
+    # The function computes the total area of the 2D projections of the part. To minimize overhang area in particular,
     # there are several possible treatments:
     # 1. Set overhang area to be positive and top surface area to be negative. However, for some 
     #    symmetric cases like a cube, this will always be 0.
@@ -80,9 +80,12 @@ def f(theta: List[float], mesh: stl.mesh.Mesh, debug=False) -> float:
     #    the bottom.
     #
     # I use a variation on #1: the hyperbolic tangent of the sum of the z-coordinates' distance from z-min.
-    # As all three coordinates approach 0, the value approaches 0. 
-    # As a precautionary measure, I multiply the sum by a constant to sharpen the decision boundary.
-    bottom_face_bias = np.tanh(100*(np.sum(vectors[:, :, 2]-z_min ,axis=1)))
+    # As all three coordinates near z-min, the value approaches 0.
+    # The constant used here requires some tweaking; larger constants improve the rate of convergence
+    # to the global minimizer, but can also prune global minimizers for shapes with many faces that are
+    # near-bottom faces. Consider the reuleaux tetrahedron example, which is positioned on a side rather than on
+    # a point with a constant of 0.1.
+    bottom_face_bias = np.tanh((np.sum(vectors[:, :, 2] ,axis=1) - 3*z_min)/10)
     heron *= bottom_face_bias
 
     # sum areas with pairwise summation, which should keep precision error low
