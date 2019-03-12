@@ -6,9 +6,8 @@ from matplotlib import pyplot as plt
 from mpl_toolkits import mplot3d
 import stl
 
-from objective_function import f
 
-def plot_f(resolution: Tuple[float,float], mesh: stl.mesh.Mesh):
+def plot_f(resolution: Tuple[float,float], f):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     ax.set_title(f'Effect of Rotating Part on Function Value')
@@ -20,8 +19,7 @@ def plot_f(resolution: Tuple[float,float], mesh: stl.mesh.Mesh):
     y_rotation = np.linspace(-math.pi, math.pi, resolution[1])
     x_rotation_mesh, y_rotation_mesh = np.meshgrid(x_rotation, y_rotation, indexing='ij')
 
-
-    f_of_t = np.array([[f([x, y, 0], mesh) for x, y in zip(x_row, y_row)] for x_row, y_row in zip(x_rotation_mesh, y_rotation_mesh)])
+    f_of_t = np.array([[f([x, y, 0]) for x, y in zip(x_row, y_row)] for x_row, y_row in zip(x_rotation_mesh, y_rotation_mesh)])
     
     print(f'Minimum value of {np.amin(f_of_t)} found')
     s = ax.plot_surface(x_rotation_mesh, y_rotation_mesh, f_of_t)
