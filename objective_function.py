@@ -27,6 +27,9 @@ def f(theta: List[float], mesh: stl.mesh.Mesh, debug=False) -> float:
 
     # z-height of the lowest vertex
     z_min = np.amin(vectors[:, :, 2])
+    # p = 1.
+    # z_min = -1./p * math.log(1./len(vectors[:,:,2])*np.sum(np.exp(-p * vectors[:,:,2])))
+    # print(f'Diff = {np.amin(vectors[:, :, 2]) - z_min}')
 
     # faces of all the triangles in 2D
     faces_2d = vectors[:, :, :2]
