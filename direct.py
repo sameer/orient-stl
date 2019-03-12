@@ -1,3 +1,5 @@
+# Implementation of the dividing rectangle global optimization algorithm.
+# Based on: https://ctk.math.ncsu.edu/Finkel_Direct/DirectUserGuide_pdf.pdf
 from typing import Tuple, List, Callable, Dict
 from collections import defaultdict
 import math
