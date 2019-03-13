@@ -31,19 +31,26 @@ def remove_potentially_optimal(rectangles, fmin: float, epsilon: float):
         # 3.3 (6)
         candidates = filter(lambda j: rectangles_same_size[j][2] == fmin_for_size, range(len(rectangles_same_size)))
 
+        if i < len(fmin_by_size) - 1:
+            larger = [(fmin_for_larger_size / (larger_size - size), larger_size - size) for larger_size, fmin_for_larger_size in zip(sorted_sizes[i+1:], fmin_by_size[i+1:])]
+            minimum_larger, minimum_larger_diff = min(larger, key=lambda x: x[0])
+            if i > 0:
+                smaller = [(fmin_for_smaller_size / (size - smaller_size), size - smaller_size) for smaller_size, fmin_for_smaller_size in zip(sorted_sizes[:i], fmin_by_size[:i])]
+                minimum_smaller, minimum_smaller_diff = max(smaller, key=lambda x: x[0])
+
         for j in candidates:
             fcandidate = rectangles_same_size[j][2]
 
             if i < len(fmin_by_size) - 1:
                 # 3.3 (8) or (9)
-                minimum_larger_diff = min((fmin_for_larger_size - fcandidate) / (larger_size -  size) for larger_size, fmin_for_larger_size in zip(sorted_sizes[i+1:], fmin_by_size[i+1:]))
+                minimum_larger_diff = minimum_larger - fcandidate / minimum_larger_diff
                 if not fmin_is_zero and epsilon > (fmin - fcandidate) / abs(fmin) + size/abs(fmin) * minimum_larger_diff:
                     continue
                 elif fmin_is_zero and fcandidate > size * minimum_larger_diff:
                     continue
                 # 3.3 (7)
                 if i > 0:
-                    maximum_smaller_diff = max((fcandidate - fmin_for_smaller_size) / (size - smaller_size) for smaller_size, fmin_for_smaller_size in zip(sorted_sizes[:i], fmin_by_size[:i]))
+                    maximum_smaller_diff = fcandidate / minimum_smaller_diff - minimum_smaller
                     if minimum_larger_diff <= 0 or np.allclose(minimum_larger_diff, maximum_smaller_diff) or minimum_larger_diff < maximum_smaller_diff:
                         continue
             finalists.append(j)
@@ -60,8 +67,10 @@ def remove_potentially_optimal(rectangles, fmin: float, epsilon: float):
             del rectangles[size]
     return potentially_optimal
 
-def size(bounds):
+def bounds_size(bounds):
     bounds_range = bounds[:,1] - bounds[:,0]
+    # The reason I sort here is so that error due to floating point precision doesn't increase
+    # the number of dictionary keys by too much
     bounds_range.sort()
     return np.linalg.norm(bounds_range)
     # log3 = math.log(3)
@@ -75,14 +84,14 @@ def split(rectangles, rectangle, fun, args, fun_bounds):
     bounds, center, _ = rectangle
     dimensions = len(bounds)
     bounds_range = bounds[:,1] - bounds[:, 0]
-    cube = is_cube(bounds_range)
 
-    if cube:  # Split in all dimensions if cube
+    if is_cube(bounds_range):  # Split in all dimensions if cube
+        splitting_offset = 0
         dei = np.diagflat(bounds_range / 3)
     else:  # Split in the largest dimension
-        splitting_dim = np.argmax(bounds_range)
+        splitting_offset = np.argmax(bounds_range)
         dei = np.zeros((1, dimensions))
-        dei[0][splitting_dim] = (bounds[splitting_dim, 1] - bounds[splitting_dim, 0]) / 3
+        dei[0][splitting_offset] = (bounds[splitting_offset, 1] - bounds[splitting_offset, 0]) / 3
 
     ci_dei = np.stack((center - dei, center + dei), axis=1)
     f_ci_dei = np.apply_along_axis(lambda x: fun(denormalize_point(fun_bounds, x), *args), 2, ci_dei)
@@ -92,8 +101,6 @@ def split(rectangles, rectangle, fun, args, fun_bounds):
     if f_ci_dei[f_ci_dei_min_index] < fmin:
         xmin = ci_dei[f_ci_dei_min_index]
         fmin = f_ci_dei[f_ci_dei_min_index]
-    # else:
-    #     print(f_ci_dei[f_ci_dei_min_index])
 
 
     wi_indices = np.argmin(f_ci_dei, axis=1)
@@ -103,48 +110,38 @@ def split(rectangles, rectangle, fun, args, fun_bounds):
     best_wi_indices = np.argsort(wi_values)
 
     # best_wi_values = wi_values[best_wi_indices]
-    if cube:
-        best_deis = bounds_range[best_wi_indices] / 3
-    else:
-        best_deis = bounds_range[best_wi_indices + splitting_dim] / 3
+    best_deis = bounds_range[best_wi_indices + splitting_offset] / 3
     # Original rectangle
     prev_rectangle = rectangle
 
-    # Split the hypercube
-    splits = 0
+    # Split the rectangle
     for wi_index, dei in zip(best_wi_indices, best_deis):
         prev_bounds, prev_center, prev_f_center = prev_rectangle
         for i, j in zip([0, 2, 1], [0, 1, -1]): # left, right, center
             bounds_i = prev_bounds.copy()
-            if cube:
-                bounds_i[wi_index, 0] = i*dei
-                bounds_i[wi_index, 1] = (i+1)*dei
-            else:
-                bounds_i[wi_index + splitting_dim, 0] = i*dei
-                bounds_i[wi_index + splitting_dim, 1] = (i+1)*dei
+            bounds_i[wi_index + splitting_offset, 0] = i*dei
+            bounds_i[wi_index + splitting_offset, 1] = (i+1)*dei
             if j != -1:
-                rectangles[size(bounds_i)].append((bounds_i, ci_dei[wi_index][j], f_ci_dei[wi_index][j]))
+                rectangles[bounds_size(bounds_i)].append((bounds_i, ci_dei[wi_index][j], f_ci_dei[wi_index][j]))
             else:
                 prev_rectangle = (bounds_i, prev_center, prev_f_center)
-            splits += 1
     
-    rectangles[size(prev_rectangle[0])].append(prev_rectangle)
+    rectangles[bounds_size(prev_rectangle[0])].append(prev_rectangle)
     return (xmin, fmin, fev)
 
 
 def initialize(rectangles, fun, args, bounds):
     dimensions = len(bounds)
-    # Center
+    # Center of a unit hypercube
     c1 = np.ones(dimensions) / 2
-    # Bounds
+    # Unit hypercube's bounds (0 vector, 1 vector)
     b1 = np.stack((np.zeros(dimensions), np.ones(dimensions)), axis=1)
-    # Value
+    # Evaluate at the center
     f_c1 = fun(denormalize_point(bounds, c1), *args)
 
-    return split(rectangles, (b1, c1, f_c1), fun, args, bounds)
-    
-    # for i, rect in rectangles.items():
-    #     print(f'i = {i}: {rect}')
+    xmin, fmin, fev = split(rectangles, (b1, c1, f_c1), fun, args, bounds)
+    fev += 1
+    return (xmin, fmin, fev)
 
 
 def plot_rectangles(rectangles):
@@ -180,10 +177,9 @@ def direct(fun: Callable[[List[float]], float], x0, bounds: List[List[float]], a
         if maxit is not None and it >= maxit:
             break
         potentially_optimal = remove_potentially_optimal(rectangles, fmin, epsilon)
-        print(f'Iteration {it} f({xmin})={fmin} with fev={fev}')
         if len(potentially_optimal) == 0:
-            print('No potentially optimal rectangles, stopping')
             break
+
         for rectangle_list in potentially_optimal.values():
             for rectangle in rectangle_list:
                 split_xmin, split_fmin, split_fev = split(rectangles, rectangle, fun, args, bounds)
@@ -192,6 +188,7 @@ def direct(fun: Callable[[List[float]], float], x0, bounds: List[List[float]], a
                     fmin = split_fmin
                 fev += split_fev
         it += 1
+        print(f'Iteration {it} f({xmin})={fmin} with fev={fev}')
     plot_rectangles(rectangles)
 
     return OptimizeResult(fun=fmin, x=denormalize_point(bounds, xmin))
