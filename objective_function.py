@@ -54,9 +54,9 @@ def build_f(mesh: stl.mesh.Mesh, debug) -> Callable[[List[float]], float]:
         # keeps all partial derivatives continuous.
         overhang_bias = (1 + np.tanh(S))        
 
-        # Add a bias to prefer bottom surfaces.
+        # Add a bias so that a flat bottom face parallel to the build plate is not treated as an overhang.
         # 
-        # A triangle with all three points at the lowest vertex height is perpendicular to the build plate. Since it 
+        # A triangle with all three points at the lowest vertex height is parallel to the build plate. Since it
         # is also the lowest face of the part, it lies flat on the build plate and is not an overhang. The function
         # should take this into account.
         #
