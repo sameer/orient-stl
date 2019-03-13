@@ -1,6 +1,7 @@
 from typing import List, Callable, Tuple
 import math
 import sys
+import time
 
 from scipy import optimize
 import numpy as np
@@ -30,14 +31,17 @@ if __name__ == '__main__':
         command = sys.argv[2]
         mesh = stl.mesh.Mesh.from_file(filename)
         f = build_f(mesh, debug)
+        start = time.time()
         if command == 'plot':
             print(f'Plotting function value for {filename}')
             plot_f((100,100), f)
         elif command == 'orient':
             theta, value = orient_stl(f, debug)
-            print(f'File "{filename}" oriented with angles {np.round(theta, decimals=2)} and value {value}')
+            finish = time.time()
+            print(f'File "{filename}" oriented with angles {np.round(theta, decimals=2)} and value {value} in {round((finish-start)*1000)} ms')
         elif command == 'orientplot':
             theta, value = orient_stl(f, debug)
-            print(f'File "{filename}" oriented with angles {np.round(theta, decimals=2)} and value {value}') 
+            finish = time.time()
+            print(f'File "{filename}" oriented with angles {np.round(theta, decimals=2)} and value {value} in {round((finish-start)*1000)} ms') 
             plot_stl(theta, mesh)
 

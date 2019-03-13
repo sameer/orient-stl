@@ -190,4 +190,5 @@ def direct(fun: Callable[[List[float]], float], x0, bounds: List[List[float]], a
                 fev += split_fev
         it += 1
         print(f'Iteration {it} f({xmin})={fmin} with fev={fev}')
+    plot_rectangles(rectangles)
     return OptimizeResult(fun=fmin, x=denormalize_point(bounds, xmin))
