@@ -1,11 +1,11 @@
-from typing import Dict, Generic, TypeVar, NamedTuple, List, Tuple, Callable
+from typing import Dict, List, Callable
 import math
 import time
 
 import numpy as np
 import stl
 
-# All products of triangle components (v1x*v1y, v1x*v1z, ..., v1x*v3z, etc.) in 128-bit precision
+# All used products of triangle components (v1x*v1y, v1x*v1z, ..., v1x*v3z, etc.)
 # see my Mathematica notebook for where these come from
 def compute_sums_and_products(mesh: stl.mesh.Mesh) -> Dict[str, List[float]]:
     sp: Dict[str, List[float]] = {}
@@ -13,9 +13,16 @@ def compute_sums_and_products(mesh: stl.mesh.Mesh) -> Dict[str, List[float]]:
         for j in range(3):
             for k in range(3):
                 for l in range(3):
+                    product_string = f'{i+1}{chr(ord("x")+j)}{k+1}{chr(ord("x")+l)}'
+                    product_string_rev = f'{k+1}{chr(ord("x")+l)}{i+1}{chr(ord("x")+j)}'
+                    if i == k or j == l: # Squares (1x1x) are never used, neither are 1x2x or 2x2y forms
+                        continue
+                    if product_string_rev in sp: # When 2x1y exists, set 1y2x equal to it, instead of redoing
+                        sp[product_string] = sp[product_string_rev]
+                        continue
                     sp[f'{i+1}{chr(ord("x")+j)}{k+1}{chr(ord("x")+l)}'] = \
-                        np.float128(mesh.vectors[:, i, j]) * \
-                        np.float128(mesh.vectors[:, k, l])
+                        mesh.vectors[:, i, j] * \
+                        mesh.vectors[:, k, l]
     sp['sa'] = sp['1y2x'] - sp['1x2y'] - sp['1y3x'] + sp['2y3x'] + sp['1x3y'] - sp['2x3y']
     sp['sb'] = sp['1z2x'] - sp['1x2z'] - sp['1z3x'] + sp['2z3x'] + sp['1x3z'] - sp['2x3z']
     sp['sc'] = sp['1z2y'] - sp['1y2z'] - sp['1z3y'] + sp['2z3y'] + sp['1y3z'] - sp['2y3z']
@@ -24,9 +31,9 @@ def compute_sums_and_products(mesh: stl.mesh.Mesh) -> Dict[str, List[float]]:
 
 
 
-def build_f(mesh: stl.mesh.Mesh, debug) -> Callable[[List[float]], float]:
+def build_f(mesh: stl.mesh.Mesh, debug: bool) -> Callable[[List[float]], float]:
     sp = compute_sums_and_products(mesh)
-    def f(theta: List[float]):
+    def f(theta: List[float]) -> float:
         if debug:
             start = time.time()
 
