@@ -9,12 +9,16 @@ import stl
 # see my Mathematica notebook for where these come from
 def compute_sums_and_products(mesh: stl.mesh.Mesh) -> Dict[str, List[float]]:
     sp: Dict[str, List[float]] = {}
+    i: int
+    j: int
+    k: int
+    l: int
     for i in range(3):
         for j in range(3):
             for k in range(3):
                 for l in range(3):
-                    product_string = f'{i+1}{chr(ord("x")+j)}{k+1}{chr(ord("x")+l)}'
-                    product_string_rev = f'{k+1}{chr(ord("x")+l)}{i+1}{chr(ord("x")+j)}'
+                    product_string: str = f'{i+1}{chr(ord("x")+j)}{k+1}{chr(ord("x")+l)}'
+                    product_string_rev: str = f'{k+1}{chr(ord("x")+l)}{i+1}{chr(ord("x")+j)}'
                     if i == k or j == l: # Squares (1x1x) are never used, neither are 1x2x or 2x2y forms
                         continue
                     if product_string_rev in sp: # When 2x1y exists, set 1y2x equal to it, instead of redoing
@@ -32,22 +36,22 @@ def compute_sums_and_products(mesh: stl.mesh.Mesh) -> Dict[str, List[float]]:
 
 
 def build_f(mesh: stl.mesh.Mesh, debug: bool) -> Callable[[List[float]], float]:
-    sp = compute_sums_and_products(mesh)
+    sp: Dict[str, List[float]] = compute_sums_and_products(mesh)
     def f(theta: List[float]) -> float:
         if debug:
-            start = time.time()
+            start: float = time.time()
 
-        sinx = math.sin(theta[0])
-        cosx = math.cos(theta[0])
-        siny = math.sin(theta[1])
-        cosy = math.cos(theta[1])
-        cosxcosy = cosx*cosy
-        cosysinx = cosy*sinx
+        sinx: float = math.sin(theta[0])
+        cosx: float = math.cos(theta[0])
+        siny: float = math.sin(theta[1])
+        cosy: float = math.cos(theta[1])
+        cosxcosy: float = cosx*cosy
+        cosysinx: float = cosy*sinx
 
-        S = sp['sa']*cosxcosy + sp['sb']*cosysinx + sp['sc']*siny
+        S: List[float] = sp['sa']*cosxcosy + sp['sb']*cosysinx + sp['sc']*siny
 
-        z_height = mesh.vectors[:,:,2]*cosxcosy - mesh.vectors[:,:,1]*cosysinx + mesh.vectors[:,:,0]*siny
-        z_min = np.min(z_height)
+        z_height: List[float] = mesh.vectors[:,:,2]*cosxcosy - mesh.vectors[:,:,1]*cosysinx + mesh.vectors[:,:,0]*siny
+        z_min: float = np.min(z_height)
 
         # Add a bias to emphasize overhang surfaces.
         # 
@@ -60,7 +64,7 @@ def build_f(mesh: stl.mesh.Mesh, debug: bool) -> Callable[[List[float]], float]:
         # 
         # I use a variation on #2: a unit-step approximation. This perturbs the function appropriately and
         # keeps all partial derivatives continuous.
-        overhang_bias = (1 + np.tanh(S))        
+        overhang_bias: List[float] = (1 + np.tanh(S))
 
         # Add a bias so that a flat bottom face parallel to the build plate is not treated as an overhang.
         # 
@@ -79,13 +83,13 @@ def build_f(mesh: stl.mesh.Mesh, debug: bool) -> Callable[[List[float]], float]:
         # to the global minimizer, but can also prune global minimizers for shapes with many faces that are
         # near-bottom faces. Consider the reuleaux tetrahedron example, which is positioned on a side rather 
         # than on a point, which should be the case without this bias.
-        bottom_face_bias = np.tanh((np.sum(z_height ,axis=1) - 3*z_min)/10)
+        bottom_face_bias: List[float] = np.tanh((np.sum(z_height ,axis=1) - 3*z_min)/10)
 
 
-        value = .25 * np.sum(np.abs(S) * overhang_bias * bottom_face_bias)
+        value: float = .25 * np.sum(np.abs(S) * overhang_bias * bottom_face_bias)
 
         if debug:
-            finish = time.time()
+            finish: float = time.time()
             print(f'Computed f({theta})={value} in {round((finish-start)*1000)} ms')
 
         return value

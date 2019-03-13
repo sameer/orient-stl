@@ -1,5 +1,5 @@
 import math
-from typing import List, Tuple
+from typing import List, Tuple, Callable
 
 import numpy as np
 from matplotlib import pyplot as plt

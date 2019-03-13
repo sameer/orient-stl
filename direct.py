@@ -4,7 +4,7 @@ from typing import Tuple, List, Callable, Dict
 from collections import defaultdict
 import math
 
-from scipy.optimize import OptimizeResult, minimize
+from scipy.optimize import OptimizeResult
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.collections import PatchCollection
@@ -144,8 +144,9 @@ def initialize(rectangles, fun, args, bounds):
     return (xmin, fmin, fev)
 
 
+# Debugging function to view the rectangles made by DIRECT for the first two dimensions
 def plot_rectangles(rectangles):
-    fig, ax = plt.subplots(1)
+    _, ax = plt.subplots(1)
     boxes = []
     points = []
     count = 0
@@ -189,12 +190,4 @@ def direct(fun: Callable[[List[float]], float], x0, bounds: List[List[float]], a
                 fev += split_fev
         it += 1
         print(f'Iteration {it} f({xmin})={fmin} with fev={fev}')
-    plot_rectangles(rectangles)
-
     return OptimizeResult(fun=fmin, x=denormalize_point(bounds, xmin))
-
-# print(denormalize_point(np.array([[-10, 10], [-10, 10]]), np.array([0.5, 0.5])))
-# assert (denormalize_point(np.array([[-10, 10], [-10, 10]]), np.array([0.5, 0.5])) == np.array([0,0])).all()
-
-# print(minimize(lambda x: (x[0]+3)**2 + (x[1])**2, [0, 0],
-#                method=direct, bounds=np.array([[-10, 10], [-10, 10]]), options=dict(maxit=30)))
