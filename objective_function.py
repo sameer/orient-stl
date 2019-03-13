@@ -6,7 +6,8 @@ import numpy as np
 import stl
 
 # All products of triangle components (v1x*v1y, v1x*v1z, ..., v1x*v3z, etc.) in 128-bit precision
-def get_sums_and_products(mesh: stl.mesh.Mesh) -> Dict[str, List[float]]:
+# see my Mathematica notebook for where these come from
+def compute_sums_and_products(mesh: stl.mesh.Mesh) -> Dict[str, List[float]]:
     sp: Dict[str, List[float]] = {}
     for i in range(3):
         for j in range(3):
@@ -24,7 +25,7 @@ def get_sums_and_products(mesh: stl.mesh.Mesh) -> Dict[str, List[float]]:
 
 
 def build_f(mesh: stl.mesh.Mesh, debug) -> Callable[[List[float]], float]:
-    sp = get_sums_and_products(mesh)    
+    sp = compute_sums_and_products(mesh)
     def f(theta: List[float]):
         if debug:
             start = time.time()
