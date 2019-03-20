@@ -6,7 +6,7 @@ See [proposal.pdf](proposal.pdf)
 
 ## Calculations in Mathematica
 
-To verify the correctness of my objective function, I also implemented it in Mathematica. See [calculations.pdf](calculations.pdf).
+To verify the correctness of my objective function, I also mostly implemented it in Mathematica. See [calculations.pdf](calculations.pdf).
 
 ## Running
 
@@ -21,3 +21,28 @@ python main.py examples/cube.stl orient
 ```bash
 python main.py examples/cube.stl plot
 ```
+
+## Demo with cut cylinder.stl
+
+### Original part orientation
+
+![figures/Figure_1.png](figures/Figure_1.png)
+
+### Corrected part orientation
+
+```bash
+python main.py examples/cut cylinder.stl orientplot
+```
+
+`File "examples/cut cylinder.stl" oriented with angles [-2.62 -0.  ] and value 0.12231975793838501 in 586 ms`
+
+![figures/Figure_2.png](figures/Figure_2.png)
+
+
+### Function value plot
+
+```bash
+python main.py examples/cut cylinder.stl plot
+```
+
+![figures/Figure_3.png](figures/Figure_3.png)
