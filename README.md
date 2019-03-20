@@ -31,10 +31,9 @@ python main.py examples/cube.stl plot
 ### Corrected part orientation
 
 ```bash
-python main.py examples/cut cylinder.stl orientplot
-```
-
+> python main.py examples/cut cylinder.stl orientplot
 `File "examples/cut cylinder.stl" oriented with angles [-2.62 -0.  ] and value 0.12231975793838501 in 586 ms`
+```
 
 ![figures/Figure_2.png](figures/Figure_2.png)
 
@@ -42,7 +41,9 @@ python main.py examples/cut cylinder.stl orientplot
 ### Function value plot
 
 ```bash
-python main.py examples/cut cylinder.stl plot
+> python main.py examples/cut cylinder.stl plot
+Plotting function value for examples/cut cylinder.stl
+Minimum value of 16.495960235595703 found
 ```
 
 ![figures/Figure_3.png](figures/Figure_3.png)
