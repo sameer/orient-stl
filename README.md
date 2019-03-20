@@ -37,13 +37,12 @@ python main.py examples/cube.stl plot
 
 ![figures/Figure_2.png](figures/Figure_2.png)
 
-
 ### Function value plot
 
 ```bash
 > python main.py examples/cut cylinder.stl plot
 Plotting function value for examples/cut cylinder.stl
-Minimum value of 16.495960235595703 found
+Minimum value of 1.2497923374176025 found
 ```
 
 ![figures/Figure_3.png](figures/Figure_3.png)
