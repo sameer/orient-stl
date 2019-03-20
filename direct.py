@@ -73,8 +73,6 @@ def bounds_size(bounds):
     # the number of dictionary keys by too much
     bounds_range.sort()
     return np.linalg.norm(bounds_range)
-    # log3 = math.log(3)
-    # return np.linalg.norm(np.round(np.log(bounds[:, 1] - bounds[:, 0]) / log3))
 
 
 def split(rectangles, rectangle, fun, args, fun_bounds):    
@@ -109,7 +107,6 @@ def split(rectangles, rectangle, fun, args, fun_bounds):
     # Dimensions, ordered from smallest to largest by best wi value
     best_wi_indices = np.argsort(wi_values)
 
-    # best_wi_values = wi_values[best_wi_indices]
     best_deis = bounds_range[best_wi_indices + splitting_offset] / 3
     # Original rectangle
     prev_rectangle = rectangle
@@ -190,5 +187,5 @@ def direct(fun: Callable[[List[float]], float], x0, bounds: List[List[float]], a
                 fev += split_fev
         it += 1
         print(f'Iteration {it} f({xmin})={fmin} with fev={fev}')
-    plot_rectangles(rectangles)
+    # plot_rectangles(rectangles)
     return OptimizeResult(fun=fmin, x=denormalize_point(bounds, xmin))
