@@ -53,13 +53,13 @@ def build_f(mesh: stl.mesh.Mesh, debug: bool) -> Callable[[List[float]], float]:
         z_height: List[float] = mesh.vectors[:,:,2]*cosxcosy - mesh.vectors[:,:,1]*cosysinx + mesh.vectors[:,:,0]*siny
         z_min: float = np.min(z_height)
 
-        # Add a bias to emphasize overhang surfaces.
+        # Add a bias to emphasize bottom surfaces over top faces.
         # 
         # The function computes the total area of the 2D projections of the part. To minimize overhang area in particular,
         # there are several possible treatments:
         # 1. Set overhang area to be positive and top surface area to be negative. However, for some 
         #    symmetric cases like a cube, this will always be 0.
-        # 2. Set overhang area to be positive and top surface area to be 0. This is ideal using the unit step function
+        # 2. Set overhang area to be positive and top surface area to be 0. This can be done using the unit step function
         #    but results in discontinuous derivatives.
         # 
         # I use a variation on #2: a unit-step approximation. This perturbs the function appropriately and
