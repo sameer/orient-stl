@@ -23,14 +23,6 @@ def plot_f(resolution: Tuple[float,float], f):
     
     print(f'Minimum value of {np.amin(f_of_t)} found')
     s = ax.plot_surface(x_rotation_mesh, y_rotation_mesh, f_of_t)
-
-    # dfdtx_of_t = np.array([[dfdt([x, y, 0])[0] for x, y in zip(x_row, y_row)] for x_row, y_row in zip(x_rotation_mesh, y_rotation_mesh)])
-    # s = ax.plot_surface(x_rotation_mesh, y_rotation_mesh, dfdtx_of_t)
-    # dfdty_of_t = np.array([[dfdt([x, y, 0])[1] for x, y in zip(x_row, y_row)] for x_row, y_row in zip(x_rotation_mesh, y_rotation_mesh)])
-    # s = ax.plot_surface(x_rotation_mesh, y_rotation_mesh, dfdty_of_t)
-
-    #ax.scatter(res.x[0], res.x[1], f(res.x), c='red')
-    #ax.scatter(math.pi/2, 0, f([math.pi,0]), c='green')
     plt.show()
 
 def plot_stl(theta: List[float], mesh: stl.mesh.Mesh):

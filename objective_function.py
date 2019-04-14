@@ -53,36 +53,8 @@ def build_f(mesh: stl.mesh.Mesh, debug: bool) -> Callable[[List[float]], float]:
         z_height: List[float] = mesh.vectors[:,:,2]*cosxcosy - mesh.vectors[:,:,1]*cosysinx + mesh.vectors[:,:,0]*siny
         z_min: float = np.min(z_height)
 
-        # Add a bias to emphasize bottom surfaces over top faces.
-        # 
-        # The function computes the total area of the 2D projections of the part. To minimize overhang area in particular,
-        # there are several possible treatments:
-        # 1. Set overhang area to be positive and top surface area to be negative. However, for some 
-        #    symmetric cases like a cube, this will always be 0.
-        # 2. Set overhang area to be positive and top surface area to be 0. This can be done using the unit step function
-        #    but results in discontinuous derivatives.
-        # 
-        # I use a variation on #2: a unit-step approximation. This perturbs the function appropriately and
-        # keeps all partial derivatives continuous.
         overhang_bias: List[float] = (1 + np.tanh(S))
 
-        # Add a bias so that a flat bottom face parallel to the build plate is not treated as an overhang.
-        # 
-        # A triangle with all three points at the lowest vertex height is parallel to the build plate. Since it
-        # is also the lowest face of the part, it lies flat on the build plate and is not an overhang. The function
-        # should take this into account.
-        #
-        # 1. Add an if statement to set the area to 0 if a triangle's vertices are all at the minimum z-height. Again,
-        #    like with the overhang bias, this results in discontinuous derivatives. For a non-derivative method, the 
-        #    function would have no gradient to suggest that it is better to orient a part with big, flat surfaces on 
-        #    the bottom.
-        #
-        # I use a variation on #1: the hyperbolic tangent of the sum of the z-coordinates' distance from z-min.
-        # As all three coordinates near z-min, the value approaches 0.
-        # The constant used here requires some tweaking; larger constants improve the rate of convergence
-        # to the global minimizer, but can also prune global minimizers for shapes with many faces that are
-        # near-bottom faces. Consider the reuleaux tetrahedron example, which is positioned on a side rather 
-        # than on a point, which should be the case without this bias.
         bottom_face_bias: List[float] = np.tanh((np.sum(z_height ,axis=1) - 3*z_min)/10)
 
 
