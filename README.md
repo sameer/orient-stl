@@ -1,8 +1,6 @@
 # orient-stl: MATH4630 Nonlinear Optimization Final Project
 
-## Project Proposal
-
-See [proposal.pdf](proposal.pdf)
+See [proposal.pdf](proposal.pdf) and [report.pdf](report.pdf) for more details on implementation and theory.
 
 ## Calculations in Mathematica
 
